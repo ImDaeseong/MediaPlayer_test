@@ -129,7 +129,9 @@ public class Main3Activity extends AppCompatActivity {
         TimeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                mediaPlayer.seekTo(progress);
+                if(!mediaPlayer.isPlaying()) {
+                    mediaPlayer.seekTo(progress);
+                }
             }
 
             @Override
@@ -258,8 +260,8 @@ public class Main3Activity extends AppCompatActivity {
 
                 if (duration <= 0) return;
 
-                //TimeBar.setMax(duration);
-                //TimeBar.setProgress(position);
+                TimeBar.setMax(duration);
+                TimeBar.setProgress(position);
 
                 int nEndTime = duration / 1000;
                 int nEndMinutes = (nEndTime / 60) % 60;
