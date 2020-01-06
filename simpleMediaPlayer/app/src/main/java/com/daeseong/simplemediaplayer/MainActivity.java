@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
                 checkPermissions();
 
                 //음악 폴더 선택
+                musicList.clear();
                 getMusicList item = new getMusicList();
                 musicList = item.getData();
 
@@ -66,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
                 CurrentPlayIndex = 0;
 
-                mp3Player.stop();
+                mp3Player.reset();
 
                 //Marquee
                 txtDesc.setText(musicList.get(CurrentPlayIndex).getMusicName());
@@ -235,8 +236,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void playPlayer(String sUrl){
-
-        initalizePlayer();
 
         mp3Player.play(sUrl, new Mp3Player.OnMediaPlayerListener() {
             @Override

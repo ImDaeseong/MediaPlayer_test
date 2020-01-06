@@ -36,6 +36,7 @@ public class Mp3Player {
     public void play(String sPath, final OnMediaPlayerListener onMediaPlayerListener){
 
         try {
+
             if (mediaPlayer != null) {
 
                 this.onMediaPlayerListener = onMediaPlayerListener;
@@ -91,8 +92,14 @@ public class Mp3Player {
     }
 
     public void stop() {
-        if(mediaPlayer != null && mediaPlayer.isPlaying()){
+        if(mediaPlayer != null){
             mediaPlayer.stop();
+            mediaPlayer.reset();
+        }
+    }
+
+    public void reset() {
+        if(mediaPlayer != null){
             mediaPlayer.reset();
         }
     }
