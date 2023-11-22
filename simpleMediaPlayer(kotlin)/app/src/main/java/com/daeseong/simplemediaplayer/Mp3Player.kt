@@ -3,62 +3,61 @@ package com.daeseong.simplemediaplayer
 import android.media.MediaPlayer
 import android.util.Log
 
-class Mp3Player {
+class Mp3Player private constructor() {
+
+    private val tag = Mp3Player::class.java.name
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var onMediaPlayerListener: OnMediaPlayerListener? = null
+
+    init {
+        mediaPlayer = MediaPlayer()
+    }
 
     companion object {
-
-        private val tag = Mp3Player::class.java.name
-
         private var instance: Mp3Player? = null
-
-        private var mediaPlayer: MediaPlayer? = null
 
         fun getInstance(): Mp3Player {
             if (instance == null) {
-
                 instance = Mp3Player()
-                mediaPlayer = MediaPlayer()
-
-                Log.e(tag, "getInstance")
             }
             return instance as Mp3Player
         }
     }
 
-    private var onMediaPlayerListener: OnMediaPlayerListener? = null
-
     fun release() {
-
         try {
-
             removeListener()
-            if (mediaPlayer != null) {
-                mediaPlayer!!.stop()
-                mediaPlayer!!.release()
-                mediaPlayer = null
+
+            mediaPlayer?.let {
+                it.stop()
+                it.reset()
+                it.release()
             }
+            mediaPlayer = null
         } catch (ex: Exception) {
-            Log.d(tag, ex.message.toString())
+            Log.e(tag, ex.message.toString())
         }
     }
 
-    fun play(sPath: String?, onMediaPlayerListener: OnMediaPlayerListener?) {
-
+    fun play(sPath: String, onMediaPlayerListener: OnMediaPlayerListener?) {
         try {
-
-            if (mediaPlayer != null) {
-
+            mediaPlayer?.let {
                 this.onMediaPlayerListener = onMediaPlayerListener
-                mediaPlayer!!.setDataSource(sPath)
-                mediaPlayer!!.prepare()
-                mediaPlayer!!.setOnCompletionListener {
+
+                it.setDataSource(sPath)
+                it.prepare()
+
+                it.setOnCompletionListener {
                     onMediaPlayerListener?.onCompletion(true)
                 }
-                mediaPlayer!!.setOnPreparedListener { mp ->
+
+                it.setOnPreparedListener { mp ->
                     onMediaPlayerListener?.onPrepared(mp.duration)
                     mp.start()
                 }
-                mediaPlayer!!.setOnErrorListener { mp, what, extra ->
+
+                it.setOnErrorListener { mp, what, extra ->
                     onMediaPlayerListener?.onCompletion(false)
                     false
                 }
@@ -69,61 +68,46 @@ class Mp3Player {
     }
 
     fun start() {
-
-        if (mediaPlayer != null) {
-            mediaPlayer!!.start()
-        }
+        mediaPlayer?.start()
     }
 
     fun stop() {
-
-        if (mediaPlayer != null) {
-            mediaPlayer!!.stop()
-            mediaPlayer!!.reset()
+        mediaPlayer?.let {
+            it.stop()
+            it.reset()
         }
     }
 
     fun reset() {
-
-        if (mediaPlayer != null) {
-            mediaPlayer!!.reset()
-        }
+        mediaPlayer?.reset()
     }
 
     fun pause() {
-
-        if (mediaPlayer != null && mediaPlayer!!.isPlaying) {
-            mediaPlayer!!.pause()
+        mediaPlayer?.let {
+            if (it.isPlaying) {
+                it.pause()
+            }
         }
     }
 
     fun getCurrentPosition(): Int {
-        return if (mediaPlayer != null) mediaPlayer!!.currentPosition else 0
+        return mediaPlayer?.currentPosition ?: 0
     }
 
     fun getDuration(): Int {
-        return if (mediaPlayer != null) mediaPlayer!!.duration else 0
+        return mediaPlayer?.duration ?: 0
     }
 
     fun isPlaying(): Boolean {
-        return if (mediaPlayer != null) mediaPlayer!!.isPlaying else false
+        return mediaPlayer?.isPlaying ?: false
     }
 
     fun seekTo(position: Int) {
-
-        if (mediaPlayer != null) {
-            mediaPlayer!!.seekTo(position)
-        }
+        mediaPlayer?.seekTo(position)
     }
 
     private fun removeListener() {
-
-        try {
-
-            onMediaPlayerListener = null
-        } catch (ex: Exception) {
-            Log.e(tag, ex.message.toString())
-        }
+        onMediaPlayerListener = null
     }
 
     interface OnMediaPlayerListener {

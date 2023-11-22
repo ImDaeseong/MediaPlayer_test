@@ -1,7 +1,9 @@
 package com.daeseong.simplemediaplayer
 
 import android.Manifest
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -11,45 +13,48 @@ import android.view.Window
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.SeekBar
-import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.daeseong.simplemediaplayer.Mp3Player.OnMediaPlayerListener
 import java.util.*
-import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
 
     private val tag = MainActivity::class.java.simpleName
 
-    private var btnPre: ImageButton? = null
-    private var btnPlay:ImageButton? = null
-    private var btnPause:ImageButton? = null
-    private var btnNext:ImageButton? = null
-    private var btnPrevious:ImageButton? = null
-    private var btnNextgo:ImageButton? = null
-    private var btnSearch:ImageButton? = null
-    private var txtStartTime: TextView? = null
-    private var txtEndTime:TextView? = null
-    private var txtDesc:TextView? = null
-    private var seekBar: SeekBar? = null
-    private var playerTimer: PlayerTimer? = null
-    private var mp3Player: Mp3Player? = null
+    private lateinit var btnPre: ImageButton
+    private lateinit var btnPlay: ImageButton
+    private lateinit var btnPause: ImageButton
+    private lateinit var btnNext: ImageButton
+    private lateinit var btnPrevious: ImageButton
+    private lateinit var btnNextgo: ImageButton
+    private lateinit var btnSearch: ImageButton
+    private lateinit var txtStartTime: TextView
+    private lateinit var txtEndTime: TextView
+    private lateinit var txtDesc: TextView
+    private lateinit var seekBar: SeekBar
 
     private var musicList = ArrayList<MusicInfo>()
-    private var CurrentPlayIndex = -1
-
-    private var taskMarquee: MarqueeTask? = null
+    private var currentPlayIndex = -1
     private var timerMarquee: Timer? = null
+
+    private lateinit var permissionsLauncher: ActivityResultLauncher<String>
+
+    private lateinit var playerTimer: PlayerTimer
+    private lateinit var mp3Player: Mp3Player
+    private lateinit var taskMarquee: MarqueeTask
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        InitTitleBar()
+        initTitleBar()
 
         setContentView(R.layout.activity_main)
+
+        initPermissionsLauncher()
 
         initalizePlayer()
 
@@ -58,138 +63,135 @@ class MainActivity : AppCompatActivity() {
         txtDesc = findViewById(R.id.tvDesc)
 
         btnSearch = findViewById(R.id.btnSearch)
-        btnSearch!!.setOnClickListener(View.OnClickListener {
+        btnSearch.setOnClickListener {
 
             checkPermissions()
 
             //음악 폴더 선택
             musicList.clear()
             val item = getMusicList()
-            if (item.getData()) {
-                musicList = item.musicList
-            }
+            musicList = item.getData()
 
-            if (musicList.size == 0) return@OnClickListener
+            if (musicList.isEmpty()) return@setOnClickListener
 
-            CurrentPlayIndex = 0
-            mp3Player!!.reset()
+            currentPlayIndex = 0
+
+            mp3Player.reset()
 
             //Marquee
-            txtDesc!!.text = musicList[CurrentPlayIndex].musicName
+            txtDesc.text = musicList[currentPlayIndex].musicName
 
-            val uri = Uri.parse(musicList[CurrentPlayIndex].musicPath)
+            val uri = Uri.parse(musicList[currentPlayIndex].musicPath)
             playPlayer(uri.toString())
-            btnPlay!!.visibility = View.INVISIBLE
-            btnPause!!.visibility = View.VISIBLE
-        })
+            btnPlay.visibility = View.INVISIBLE
+            btnPause.visibility = View.VISIBLE
+        }
 
         //3초 뒤로
         btnPrevious = findViewById(R.id.btnPrevious)
-        btnPrevious!!.setOnClickListener {
+        btnPrevious.setOnClickListener {
             PreplayPlayer()
         }
 
         //3초 앞으로
         btnNextgo = findViewById(R.id.btnNextgo)
-        btnNextgo!!.setOnClickListener {
+        btnNextgo.setOnClickListener {
             NextplayPlayer()
         }
 
         //이전곡
         btnPre = findViewById(R.id.btnPre)
-        btnPre!!.setOnClickListener(View.OnClickListener {
+        btnPre.setOnClickListener {
+            if (musicList.isEmpty()) return@setOnClickListener
 
-            if (musicList.size == 0) return@OnClickListener
+            currentPlayIndex--
 
-            CurrentPlayIndex--
+            if (currentPlayIndex < 0)
+                currentPlayIndex = musicList.size - 1
 
-            if (CurrentPlayIndex < 0) CurrentPlayIndex = musicList.size - 1
-            mp3Player!!.stop()
+            mp3Player.stop()
 
             //Marquee
-            txtDesc!!.text = musicList[CurrentPlayIndex].musicName
+            txtDesc.text = musicList[currentPlayIndex].musicName
 
-            val uri = Uri.parse(musicList[CurrentPlayIndex].musicPath)
+            val uri = Uri.parse(musicList[currentPlayIndex].musicPath)
             playPlayer(uri.toString())
-            btnPlay!!.visibility = View.INVISIBLE
-            btnPause!!.visibility = View.VISIBLE
-        })
+            btnPlay.visibility = View.INVISIBLE
+            btnPause.visibility = View.VISIBLE
+        }
 
         //다음곡
         btnNext = findViewById(R.id.btnNext)
-        btnNext!!.setOnClickListener(View.OnClickListener {
+        btnNext.setOnClickListener {
+            if (musicList.isEmpty()) return@setOnClickListener
 
-            if (musicList.size == 0) return@OnClickListener
+            currentPlayIndex++
 
-            CurrentPlayIndex++
+            if (currentPlayIndex > (musicList.size - 1))
+                currentPlayIndex = 0
 
-            if (CurrentPlayIndex > musicList.size - 1) CurrentPlayIndex = 0
-
-            mp3Player!!.stop()
+            mp3Player.stop()
 
             //Marquee
-            txtDesc!!.text = musicList[CurrentPlayIndex].musicName
+            txtDesc.text = musicList[currentPlayIndex].musicName
 
-            val uri: Uri = Uri.parse(musicList[CurrentPlayIndex].musicPath)
+            val uri = Uri.parse(musicList[currentPlayIndex].musicPath)
             playPlayer(uri.toString())
-            btnPlay!!.visibility = View.INVISIBLE
-            btnPause!!.visibility = View.VISIBLE
-        })
+            btnPlay.visibility = View.INVISIBLE
+            btnPause.visibility = View.VISIBLE
+        }
 
         //연주
         btnPlay = findViewById(R.id.btnPlay)
-        btnPlay!!.setOnClickListener {
-
-            mp3Player!!.start()
-            btnPlay!!.visibility = View.INVISIBLE
-            btnPause!!.visibility = View.VISIBLE
+        btnPlay.setOnClickListener {
+            mp3Player.start()
+            btnPlay.visibility = View.INVISIBLE
+            btnPause.visibility = View.VISIBLE
         }
 
         //일시정지
         btnPause = findViewById(R.id.btnPause)
-        btnPause!!.setOnClickListener(View.OnClickListener {
-
-            if (mp3Player!!.isPlaying()) {
-                mp3Player!!.pause()
-                btnPlay!!.visibility = View.VISIBLE
-                btnPause!!.visibility = View.INVISIBLE
+        btnPause.setOnClickListener {
+            if (mp3Player.isPlaying()) {
+                mp3Player.pause()
+                btnPlay.visibility = View.VISIBLE
+                btnPause.visibility = View.INVISIBLE
             } else {
-                mp3Player!!.start()
-                btnPlay!!.visibility = View.INVISIBLE
-                btnPause!!.visibility = View.VISIBLE
+                mp3Player.start()
+                btnPlay.visibility = View.INVISIBLE
+                btnPause.visibility = View.VISIBLE
             }
-        })
+        }
 
         //진행바
-        seekBar = findViewById<SeekBar>(R.id.seekBar)
-        seekBar!!.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
-
-            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                if (!mp3Player!!.isPlaying()) {
-                    mp3Player!!.seekTo(progress)
+        seekBar = findViewById(R.id.seekBar)
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!mp3Player.isPlaying()) {
+                    mp3Player.seekTo(progress)
                 }
             }
 
-            override fun onStartTrackingTouch(seekBar: SeekBar) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
         checkPermissions()
     }
 
-    private fun InitTitleBar() {
-
+    private fun initTitleBar() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val window: Window = window
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            window.statusBarColor = ContextCompat.getColor(this, R.color.statusbar_bg)
+            window.statusBarColor = Color.rgb(255, 255, 255)
         }
-    }
 
-    private fun checkPermissions() {
-
-        if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),1)
+        try {
+            //안드로이드 8.0 오레오 버전에서만 오류 발생
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            supportRequestWindowFeature(Window.FEATURE_NO_TITLE)
+        } catch (ex: Exception) {
+            Log.e(tag, ex.message.toString())
         }
     }
 
@@ -202,57 +204,88 @@ class MainActivity : AppCompatActivity() {
         releasePlayer()
     }
 
+    private fun checkPermissions() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    permissionsLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO)
+                } else {
+                    Log.e(tag, "READ_MEDIA_AUDIO 권한 소유")
+                }
+
+            } else {
+
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    permissionsLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                } else {
+                    Log.e(tag, "READ_EXTERNAL_STORAGE 권한 소유")
+                }
+            }
+        }
+    }
+
+    private fun initPermissionsLauncher() {
+        permissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { result ->
+
+            if (result) {
+                Log.e(tag, "권한 소유")
+            } else {
+                Log.e(tag, "권한 미소유")
+            }
+        }
+    }
+
     private fun initalizePlayer() {
         mp3Player = Mp3Player.getInstance()
     }
 
     private fun releasePlayer() {
-        mp3Player!!.release()
+        mp3Player.release()
     }
 
     private fun playPlayer(sUrl: String) {
-
-        mp3Player!!.play(sUrl, object : OnMediaPlayerListener {
-
+        mp3Player.play(sUrl, object : OnMediaPlayerListener {
             override fun onCompletion(bComplete: Boolean) {
-                Log.e(tag, "onCompletion")
+                Log.d(tag, "onCompletion")
                 stopplayerTimer()
             }
 
             override fun onPrepared(mDuration: Int) {
-                Log.e(tag, "onPrepared")
+                Log.d(tag, "onPrepared")
             }
         })
         setSeekBarProgress()
     }
 
     private fun PreplayPlayer() {
-        mp3Player!!.seekTo(mp3Player!!.getCurrentPosition() - 5000)
+        mp3Player.seekTo(mp3Player.getCurrentPosition() - 5000)
     }
 
     private fun NextplayPlayer() {
-        mp3Player!!.seekTo(mp3Player!!.getCurrentPosition() + 5000)
+        mp3Player.seekTo(mp3Player.getCurrentPosition() + 5000)
     }
 
     private fun getCurrentPosition(): Int {
-        return mp3Player!!.getCurrentPosition()
+        return mp3Player.getCurrentPosition()
     }
 
     private fun getDuration(): Int {
-        return mp3Player!!.getDuration()
+        return mp3Player.getDuration()
     }
 
-    private fun stringForTime(timeMs: Int): String? {
-        val mFormatter: Formatter
-        val mFormatBuilder: StringBuilder = StringBuilder()
-        mFormatter = Formatter(mFormatBuilder, Locale.getDefault())
-
+    private fun stringForTime(timeMs: Int): String {
+        val mFormatBuilder = StringBuilder()
+        val mFormatter = Formatter(mFormatBuilder, Locale.getDefault())
         val totalSeconds = timeMs / 1000
-        val seconds = totalSeconds % 60
-        val minutes = totalSeconds / 60 % 60
-        val hours = totalSeconds / 3600
-        mFormatBuilder.setLength(0)
 
+        val seconds = totalSeconds % 60
+        val minutes = (totalSeconds / 60) % 60
+        val hours = totalSeconds / 3600
+
+        mFormatBuilder.setLength(0)
         return if (hours > 0) {
             mFormatter.format("%d:%02d:%02d", hours, minutes, seconds).toString()
         } else {
@@ -262,9 +295,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopplayerTimer() {
 
-        if (playerTimer != null) {
-            playerTimer!!.stop()
-            playerTimer!!.removeMessages(0)
+        if (::playerTimer.isInitialized) {
+            playerTimer.stop()
         }
     }
 
@@ -272,43 +304,40 @@ class MainActivity : AppCompatActivity() {
 
         //Marquee
         startMarqueeTimer()
-        stopplayerTimer()
-        playerTimer = PlayerTimer()
-        playerTimer!!.setCallback(object : PlayerTimer.Callback {
 
+        stopplayerTimer()
+
+        playerTimer = PlayerTimer()
+        playerTimer.setCallback(object : PlayerTimer.Callback {
             override fun onTick(timeMillis: Long) {
 
-                if (mp3Player!!.isPlaying()) {
+                if (mp3Player.isPlaying()) {
 
-                    val position: Int = getCurrentPosition()
-                    val duration: Int = getDuration()
+                    val position = getCurrentPosition()
+                    val duration = getDuration().toLong()
 
                     if (duration <= 0) return
 
-                    seekBar!!.max = duration / 1000
-                    seekBar!!.progress = position / 1000
+                    seekBar.max = (duration / 1000).toInt()
+                    seekBar.progress = (position / 1000).toInt()
 
-                    txtStartTime!!.text = stringForTime(getCurrentPosition())
-                    txtEndTime!!.text = stringForTime(getDuration())
+                    txtStartTime.text = stringForTime(getCurrentPosition())
+                    txtEndTime.text = stringForTime(getDuration())
                 }
             }
         })
-        playerTimer!!.start()
+        playerTimer.start()
     }
 
     private fun closeMarqueeTimer() {
-
-        if (timerMarquee != null) {
-            timerMarquee!!.cancel()
-            timerMarquee = null
-        }
+        timerMarquee?.cancel()
+        timerMarquee = null
     }
 
     private fun startMarqueeTimer() {
-
         closeMarqueeTimer()
-        taskMarquee = MarqueeTask(txtDesc!!)
+        taskMarquee = MarqueeTask(txtDesc)
         timerMarquee = Timer()
-        timerMarquee!!.schedule(taskMarquee, 0, 10000)
+        timerMarquee?.schedule(taskMarquee, 0, 10000)
     }
 }
