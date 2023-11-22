@@ -16,7 +16,7 @@ public class getMusicList {
     private ArrayList<MusicInfo> musicList  = new ArrayList<MusicInfo>();
 
     private Mp3File mp3File;
-    private  ID3v2 id3v2Tag;
+    private ID3v2 id3v2Tag;
 
     public ArrayList<MusicInfo> getData(){
 
@@ -26,23 +26,26 @@ public class getMusicList {
             musicList.clear();
             Cursor cursor = MusicApplication.getInstance().getAppContext().getContentResolver().query(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                    new String[]
-                            {
-                                    MediaStore.Audio.AudioColumns.ARTIST,
-                                    MediaStore.Audio.AudioColumns.TITLE,
-                                    MediaStore.Audio.AudioColumns.DATA
-                            },
+                    new String[] { MediaStore.Audio.AudioColumns.ARTIST, MediaStore.Audio.AudioColumns.TITLE, MediaStore.Audio.AudioColumns.DATA },
                     MediaStore.Audio.AudioColumns.IS_MUSIC + " > 0",
                     null,
                     null
             );
 
-            while(cursor.moveToNext())
-            {
-                String sMusicPath = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA));
+            int nIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA);
+
+            while(cursor.moveToNext()) {
+
+                if (nIndex == -1) {
+                    continue;
+                }
+
+                String sMusicPath = cursor.getString(nIndex);
 
                 //music3 폴더만 가져온다
-                if(!String_util.getLastFolderName(sMusicPath).equals("music2")) continue;
+                if (!String_util.getLastFolderName(sMusicPath).equals("music2")) {
+                    continue;
+                }
 
                 try {
 
@@ -56,26 +59,18 @@ public class getMusicList {
                         if (mp3File.hasId3v2Tag()) {
                             id3v2Tag = mp3File.getId3v2Tag();
                             sTitle = id3v2Tag.getTitle();
-                            sArtist = id3v2Tag.getArtist();;
+                            sArtist = id3v2Tag.getArtist();
 
-                            //id3v2Tag.getTrack();
-                            //id3v2Tag.getAlbum();
-                            //id3v2Tag.getYear();
-                            //id3v2Tag.getGenre();
-                            //id3v2Tag.getComment();
+                            Log.e(TAG, id3v2Tag.getTrack() + id3v2Tag.getAlbum() + id3v2Tag.getYear() + id3v2Tag.getGenre() + id3v2Tag.getComment());
 
-                        }else {
+                        } else {
                             id3v2Tag = new ID3v24Tag();
                             if (mp3File.hasId3v1Tag()) {
                                 ID3v1 id3v1Tag = mp3File.getId3v1Tag();
                                 sTitle = id3v1Tag.getTitle();
                                 sArtist = id3v1Tag.getArtist();
 
-                                //id3v1Tag.getTrack();
-                                //id3v1Tag.getAlbum();
-                                //id3v1Tag.getYear();
-                                //id3v1Tag.getGenre();
-                                //id3v1Tag.getComment();
+                                Log.e(TAG, id3v1Tag.getTrack() + id3v1Tag.getAlbum() + id3v1Tag.getYear() + id3v1Tag.getGenre() + id3v1Tag.getComment());
                             }
                         }
 
@@ -86,9 +81,9 @@ public class getMusicList {
                         Log.e(TAG, "Playtime: " + sPlaytime);
                         */
 
-                        if(sTitle == null && sArtist == null){
+                        if (sTitle == null && sArtist == null) {
                             sSing = String.format("%s", String_util.getFileName(sMusicPath));
-                        }else {
+                        } else {
                             sSing = String.format("%s - %s", sTitle, sArtist);
                         }
                         //Log.e(TAG, "sSing: " + sSing);
@@ -97,16 +92,19 @@ public class getMusicList {
                         info.setMusicPath(sMusicPath);
                         info.setMusicName(sSing);
                         musicList.add(info);
-
                     }
+
                 }  catch (Exception ex){
                     Log.e(TAG, ex.getMessage().toString());
                 }
             }
-        }catch (Exception ex){
+
+            cursor.close();
+
+        } catch (Exception ex) {
             Log.e(TAG, ex.getMessage().toString());
         }
+
         return musicList;
     }
-
 }

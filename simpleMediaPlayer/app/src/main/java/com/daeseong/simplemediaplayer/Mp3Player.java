@@ -7,14 +7,17 @@ public class Mp3Player {
 
     private static final String TAG = Mp3Player.class.getName();
 
-    private static MediaPlayer mediaPlayer = null;
+    private static Mp3Player instance;
+    private MediaPlayer mediaPlayer;
     private OnMediaPlayerListener onMediaPlayerListener;
 
-    private static Mp3Player instance;
+    private Mp3Player() {
+        mediaPlayer = new MediaPlayer();
+    }
+
     public static Mp3Player getInstance(){
-        if( instance == null){
+        if (instance == null) {
             instance = new Mp3Player();
-            mediaPlayer = new MediaPlayer();
         }
         return instance;
     }
@@ -25,11 +28,12 @@ public class Mp3Player {
 
             if (mediaPlayer != null) {
                 mediaPlayer.stop();
+                mediaPlayer.reset();
                 mediaPlayer.release();
                 mediaPlayer = null;
             }
-        }catch (Exception ex){
-            Log.d(TAG, ex.getMessage().toString());
+        } catch (Exception ex) {
+            Log.e(TAG, ex.getMessage());
         }
     }
 
@@ -143,5 +147,4 @@ public class Mp3Player {
         void onCompletion(boolean bComplete);
         void onPrepared(int mDuration);
     }
-
 }

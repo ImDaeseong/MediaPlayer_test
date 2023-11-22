@@ -1,10 +1,13 @@
 package com.daeseong.simplemediaplayer;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-
 import android.Manifest;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,7 +18,6 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
-
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.Locale;
@@ -37,13 +39,17 @@ public class MainActivity extends AppCompatActivity {
     private MarqueeTask taskMarquee;
     private Timer timerMarquee = null;
 
+    public ActivityResultLauncher<String> permissResultLauncher;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        InitTitleBar();
+        initTitleBar();
 
         setContentView(R.layout.activity_main);
+
+        initPermissionsLauncher();
 
         initalizePlayer();
 
@@ -202,18 +208,20 @@ public class MainActivity extends AppCompatActivity {
         checkPermissions();
     }
 
-    private void InitTitleBar(){
+    private void initTitleBar() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(getResources().getColor(R.color.statusbar_bg));
+            window.setStatusBarColor(Color.rgb(255, 255, 255));
         }
-    }
 
-    private void checkPermissions() {
-        if (ActivityCompat.checkSelfPermission(getApplicationContext(), android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this,   new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+        try {
+            //안드로이드 8.0 오레오 버전에서만 오류 발생
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+        } catch (Exception ex) {
+            Log.e(TAG, ex.getMessage().toString());
         }
     }
 
@@ -225,6 +233,40 @@ public class MainActivity extends AppCompatActivity {
         closeMarqueeTimer();
         stopplayerTimer();
         releasePlayer();
+    }
+
+    private void checkPermissions() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    permissResultLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO);
+                } else {
+                    Log.e(TAG, "READ_MEDIA_AUDIO 권한 소유");
+                }
+
+            } else {
+
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    permissResultLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
+                } else {
+                    Log.e(TAG, "READ_EXTERNAL_STORAGE 권한 소유");
+                }
+            }
+        }
+    }
+
+    private void initPermissionsLauncher() {
+
+        permissResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), result -> {
+            if (result) {
+                Log.e(TAG, "권한 소유");
+            } else {
+                Log.e(TAG, "권한 미소유");
+            }
+        });
     }
 
     private void initalizePlayer(){
@@ -291,9 +333,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopplayerTimer(){
-        if(playerTimer != null){
+        if (playerTimer != null) {
             playerTimer.stop();
-            playerTimer.removeMessages(0);
+            playerTimer = null;
         }
     }
 
@@ -309,7 +351,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onTick(long timeMillis) {
 
-                if(mp3Player.isPlaying()) {
+                if (mp3Player.isPlaying()) {
 
                     long position = getCurrentPosition();
                     long duration = getDuration();
@@ -340,5 +382,4 @@ public class MainActivity extends AppCompatActivity {
         timerMarquee = new Timer();
         timerMarquee.schedule(taskMarquee, 0, 10000);
     }
-
 }
