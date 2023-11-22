@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
 
-
 class MusicApplication : Application() {
 
     private val tag: String = MusicApplication::class.java.simpleName
@@ -29,7 +28,7 @@ class MusicApplication : Application() {
         mInstance = this
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration?) {
+    override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
     }
 

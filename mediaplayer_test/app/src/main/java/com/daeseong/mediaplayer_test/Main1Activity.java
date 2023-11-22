@@ -1,9 +1,8 @@
 package com.daeseong.mediaplayer_test;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Context;
 import android.content.pm.ActivityInfo;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
@@ -15,6 +14,7 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class Main1Activity extends AppCompatActivity {
 
@@ -22,20 +22,20 @@ public class Main1Activity extends AppCompatActivity {
 
     private ImageButton btnPlay, btnPause, btnPrevious, btnNextgo, btnSearch;
     private TextView txtStartTime, txtEndTime;
-    private SeekBar TimeBar, volumeBar;
-    private MediaPlayer mediaPlayer = null;
-    private AudioManager audioManager = null;
+    private SeekBar timeBar, volumeBar;
+    private MediaPlayer mediaPlayer;
+    private AudioManager audioManager;
     private PlayerTimer playerTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        InitTitleBar();
+        initTitleBar();
 
         setContentView(R.layout.activity_main1);
 
-        InitControl();
+        initControl();
 
         initVolume();
 
@@ -45,41 +45,35 @@ public class Main1Activity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        try {
-
-            if (mediaPlayer != null) {
-                mediaPlayer.stop();
-                mediaPlayer.release();
-                mediaPlayer = null;
-            }
-
-            stopplayerTimer();
-
-        }catch (Exception ex){
-            Log.d(TAG, ex.getMessage().toString());
-        }
+        releaseMediaPlayer();
+        stopPlayerTimer();
     }
 
-    private void InitTitleBar(){
+    private void initTitleBar() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(getResources().getColor(R.color.statusbar_bg));
+            window.setStatusBarColor(Color.rgb(255, 255, 255));
         }
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+        try {
+            //안드로이드 8.0 오레오 버전에서만 오류 발생
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+        } catch (Exception ex) {
+            Log.e(TAG, ex.getMessage().toString());
+        }
     }
 
-    private void  initVolume(){
+    private void initVolume() {
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
 
-        audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        int maxvolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        int curvolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-
-        volumeBar = (SeekBar)findViewById(R.id.volumeBar);
-        volumeBar.setMax(maxvolume);
-        volumeBar.setProgress(curvolume);
+        volumeBar = findViewById(R.id.volumeBar);
+        volumeBar.setMax(maxVolume);
+        volumeBar.setProgress(currentVolume);
 
         volumeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -97,13 +91,12 @@ public class Main1Activity extends AppCompatActivity {
         });
     }
 
-    private void  initPlaytime(){
-
-        TimeBar = (SeekBar)findViewById(R.id.TimeBar);
-        TimeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+    private void initPlaytime() {
+        timeBar = findViewById(R.id.TimeBar);
+        timeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if(!mediaPlayer.isPlaying()) {
+                if (mediaPlayer != null && !mediaPlayer.isPlaying() && fromUser) {
                     mediaPlayer.seekTo(progress);
                 }
             }
@@ -118,22 +111,7 @@ public class Main1Activity extends AppCompatActivity {
         });
     }
 
-    private void initDisplaytime(){
-
-        int nEndTime = mediaPlayer.getDuration() / 1000;
-        int nEndMinutes = (nEndTime / 60) % 60;
-        int nEndSeconds = nEndTime % 60;
-
-        int nCurrentTime = mediaPlayer.getCurrentPosition() / 1000;
-        int nCurrentMinutes = (nCurrentTime / 60) % 60;
-        int nCurrentSeconds = nCurrentTime % 60;
-
-        txtStartTime.setText(String.format("%02d:%02d", nCurrentMinutes, nCurrentSeconds));
-        txtEndTime.setText(String.format("%02d:%02d", nEndMinutes, nEndSeconds));
-    }
-
-    private void InitControl(){
-
+    private void initControl() {
         txtStartTime = findViewById(R.id.startTime);
         txtEndTime = findViewById(R.id.endTime);
 
@@ -141,118 +119,124 @@ public class Main1Activity extends AppCompatActivity {
         btnSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                try {
-                    mediaPlayer = MediaPlayer.create(Main1Activity.this, R.raw.a);
-                    mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                        @Override
-                        public void onCompletion(MediaPlayer mp) {
-
-                            Log.d(TAG, "onCompletion");
-                            stopplayerTimer();
-                        }
-                    });
-
-                    setSeekBarProgress();
-
-                    btnPlay.setVisibility(View.VISIBLE);
-                    btnPause.setVisibility(View.INVISIBLE);
-
-                }catch (Exception ex){
-                    Log.d(TAG, ex.getMessage().toString());
-                }
+                initMediaPlayer();
             }
         });
 
-        //연주
         btnPlay = findViewById(R.id.btnPlay);
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                if (mediaPlayer != null) {
-                    mediaPlayer.start();
-                    btnPlay.setVisibility(View.INVISIBLE);
-                    btnPause.setVisibility(View.VISIBLE);
-                }
+                playMediaPlayer();
             }
         });
 
-        //일시정지
         btnPause = findViewById(R.id.btnPause);
         btnPause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                    mediaPlayer.pause();
-                    btnPlay.setVisibility(View.VISIBLE);
-                    btnPause.setVisibility(View.INVISIBLE);
-                }
+                pauseMediaPlayer();
             }
         });
 
-        //5초 뒤로
         btnPrevious = findViewById(R.id.btnPrevious);
         btnPrevious.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                if (mediaPlayer != null) {
-                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 5000);
-                }
+                seekMediaPlayer(-5000);
             }
         });
 
-        //5초 앞으로
         btnNextgo = findViewById(R.id.btnNextgo);
         btnNextgo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                if (mediaPlayer != null) {
-                    mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 5000);
-                }
+                seekMediaPlayer(5000);
             }
         });
     }
 
-    private void stopplayerTimer(){
-        if(playerTimer != null){
-            playerTimer.stop();
-            playerTimer.removeMessages(0);
+    private void initMediaPlayer() {
+        releaseMediaPlayer();
+        mediaPlayer = MediaPlayer.create(Main1Activity.this, R.raw.a);
+        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                stopPlayerTimer();
+            }
+        });
+        setSeekBarProgress();
+        btnPlay.setVisibility(View.VISIBLE);
+        btnPause.setVisibility(View.INVISIBLE);
+    }
+
+    private void playMediaPlayer() {
+        if (mediaPlayer != null) {
+            mediaPlayer.start();
+            btnPlay.setVisibility(View.INVISIBLE);
+            btnPause.setVisibility(View.VISIBLE);
         }
     }
 
-    private void setSeekBarProgress(){
+    private void pauseMediaPlayer() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+            btnPlay.setVisibility(View.VISIBLE);
+            btnPause.setVisibility(View.INVISIBLE);
+        }
+    }
 
-        stopplayerTimer();
+    private void seekMediaPlayer(int milliseconds) {
+        if (mediaPlayer != null) {
+            int currentPosition = mediaPlayer.getCurrentPosition() + milliseconds;
+            mediaPlayer.seekTo(Math.max(0, currentPosition));
+        }
+    }
 
+    private void setSeekBarProgress() {
+        stopPlayerTimer();
         playerTimer = new PlayerTimer();
         playerTimer.setCallback(new PlayerTimer.Callback() {
             @Override
             public void onTick(long timeMillis) {
-
-                int position = mediaPlayer.getCurrentPosition();
-                int duration = mediaPlayer.getDuration();
-
-                if (duration <= 0) return;
-
-                TimeBar.setMax(duration);
-                TimeBar.setProgress(position);
-
-                int nEndTime = duration / 1000;
-                int nEndMinutes = (nEndTime / 60) % 60;
-                int nEndSeconds = nEndTime % 60;
-
-                int nCurrentTime = position / 1000;
-                int nCurrentMinutes = (nCurrentTime / 60) % 60;
-                int nCurrentSeconds = nCurrentTime % 60;
-
-                txtStartTime.setText(String.format("%02d:%02d", nCurrentMinutes, nCurrentSeconds));
-                txtEndTime.setText(String.format("%02d:%02d", nEndMinutes, nEndSeconds));
+                updateSeekBar();
             }
         });
         playerTimer.start();
+    }
+
+    private void updateSeekBar() {
+        int position = mediaPlayer.getCurrentPosition();
+        int duration = mediaPlayer.getDuration();
+
+        if (duration <= 0) return;
+
+        timeBar.setMax(duration);
+        timeBar.setProgress(position);
+
+        int nEndTime = duration / 1000;
+        int nEndMinutes = (nEndTime / 60) % 60;
+        int nEndSeconds = nEndTime % 60;
+
+        int nCurrentTime = position / 1000;
+        int nCurrentMinutes = (nCurrentTime / 60) % 60;
+        int nCurrentSeconds = nCurrentTime % 60;
+
+        txtStartTime.setText(String.format("%02d:%02d", nCurrentMinutes, nCurrentSeconds));
+        txtEndTime.setText(String.format("%02d:%02d", nEndMinutes, nEndSeconds));
+    }
+
+    private void releaseMediaPlayer() {
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
+
+    private void stopPlayerTimer() {
+        if (playerTimer != null) {
+            playerTimer.stop();
+            playerTimer = null;
+        }
     }
 }

@@ -3,12 +3,10 @@ package com.daeseong.simplemediaplayer;
 import android.database.Cursor;
 import android.provider.MediaStore;
 import android.util.Log;
-
 import com.mpatric.mp3agic.ID3v2;
 import com.mpatric.mp3agic.Mp3File;
 import com.mpatric.mp3agic.ID3v1;
 import com.mpatric.mp3agic.ID3v24Tag;
-
 import java.util.ArrayList;
 
 public class getMusicList {

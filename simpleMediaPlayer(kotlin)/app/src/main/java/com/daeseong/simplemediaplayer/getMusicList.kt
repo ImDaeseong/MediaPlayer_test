@@ -7,7 +7,6 @@ import com.mpatric.mp3agic.ID3v2
 import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
 
-
 class getMusicList {
 
     private val tag = getMusicList::class.java.simpleName

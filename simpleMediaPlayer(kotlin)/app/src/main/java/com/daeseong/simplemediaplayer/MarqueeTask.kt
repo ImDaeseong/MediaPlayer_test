@@ -1,14 +1,11 @@
 package com.daeseong.simplemediaplayer
 
 import android.animation.AnimatorSet
-
 import android.animation.ObjectAnimator
 import android.os.Handler
 import android.view.View
-
 import android.widget.TextView
 import java.util.*
-
 
 class MarqueeTask(private val tv: TextView) : TimerTask() {
 

@@ -1,9 +1,9 @@
 package com.daeseong.mediaplayer_test;
 
 import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Context;
 import android.content.pm.ActivityInfo;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
@@ -23,33 +23,31 @@ public class Main3Activity extends AppCompatActivity {
     private ImageButton btnPlay, btnPause, btnPrevious, btnNextgo, btnSearch;
     private TextView txtStartTime, txtEndTime;
     private SeekBar TimeBar, volumeBar;
-    private MediaPlayer mediaPlayer = null;
-    private AudioManager audioManager = null;
+    private MediaPlayer mediaPlayer;
+    private AudioManager audioManager;
     private PlayerTimer playerTimer;
 
-    protected MediaPlayer.OnCompletionListener onCompletionListener = new MediaPlayer.OnCompletionListener() {
+    private MediaPlayer.OnCompletionListener onCompletionListener = new MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mp) {
-
-            Log.d(TAG, "onCompletion");
-            stopplayerTimer();
+            Log.e(TAG, "onCompletion");
+            stopPlayerTimer();
         }
     };
 
-    protected MediaPlayer.OnErrorListener onErrorListener = new MediaPlayer.OnErrorListener() {
+    private MediaPlayer.OnErrorListener onErrorListener = new MediaPlayer.OnErrorListener() {
         @Override
         public boolean onError(MediaPlayer mp, int what, int extra) {
-
-            Log.d(TAG, "onError");
+            Log.e(TAG, "onError");
             return false;
         }
     };
 
-    protected MediaPlayer.OnPreparedListener onPreparedListener = new MediaPlayer.OnPreparedListener() {
+    private MediaPlayer.OnPreparedListener onPreparedListener = new MediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(MediaPlayer mp) {
-
-            Log.d(TAG, "onPrepared");
+            Log.e(TAG, "onPrepared");
+            setSeekBarProgress();
         }
     };
 
@@ -57,7 +55,7 @@ public class Main3Activity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        InitTitleBar();
+        initTitleBar();
 
         setContentView(R.layout.activity_main3);
 
@@ -71,41 +69,35 @@ public class Main3Activity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        try {
-
-            if (mediaPlayer != null) {
-                mediaPlayer.stop();
-                mediaPlayer.release();
-                mediaPlayer = null;
-            }
-
-            stopplayerTimer();
-
-        }catch (Exception ex){
-            Log.d(TAG, ex.getMessage().toString());
-        }
+        releaseMediaPlayer();
+        stopPlayerTimer();
     }
 
-    private void InitTitleBar(){
+    private void initTitleBar() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(getResources().getColor(R.color.statusbar_bg));
+            window.setStatusBarColor(Color.rgb(255, 255, 255));
         }
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+        try {
+            //안드로이드 8.0 오레오 버전에서만 오류 발생
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+        } catch (Exception ex) {
+            Log.e(TAG, ex.getMessage().toString());
+        }
     }
 
-    private void  initVolume(){
+    private void initVolume() {
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
 
-        audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        int maxvolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        int curvolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-
-        volumeBar = (SeekBar)findViewById(R.id.volumeBar);
-        volumeBar.setMax(maxvolume);
-        volumeBar.setProgress(curvolume);
+        volumeBar = findViewById(R.id.volumeBar);
+        volumeBar.setMax(maxVolume);
+        volumeBar.setProgress(currentVolume);
 
         volumeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -123,13 +115,12 @@ public class Main3Activity extends AppCompatActivity {
         });
     }
 
-    private void  initPlaytime(){
-
-        TimeBar = (SeekBar)findViewById(R.id.TimeBar);
+    private void initPlaytime() {
+        TimeBar = findViewById(R.id.TimeBar);
         TimeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if(!mediaPlayer.isPlaying()) {
+                if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
                     mediaPlayer.seekTo(progress);
                 }
             }
@@ -144,8 +135,7 @@ public class Main3Activity extends AppCompatActivity {
         });
     }
 
-    private void initDisplaytime(){
-
+    private void initDisplaytime() {
         int nEndTime = mediaPlayer.getDuration() / 1000;
         int nEndMinutes = (nEndTime / 60) % 60;
         int nEndSeconds = nEndTime % 60;
@@ -158,8 +148,7 @@ public class Main3Activity extends AppCompatActivity {
         txtEndTime.setText(String.format("%02d:%02d", nEndMinutes, nEndSeconds));
     }
 
-    private void InitControl(){
-
+    private void InitControl() {
         txtStartTime = findViewById(R.id.startTime);
         txtEndTime = findViewById(R.id.endTime);
 
@@ -167,30 +156,26 @@ public class Main3Activity extends AppCompatActivity {
         btnSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
                 try {
+                    releaseMediaPlayer();
                     mediaPlayer = MediaPlayer.create(Main3Activity.this, R.raw.a);
                     mediaPlayer.setOnPreparedListener(onPreparedListener);
                     mediaPlayer.setOnCompletionListener(onCompletionListener);
                     mediaPlayer.setOnErrorListener(onErrorListener);
 
-                    setSeekBarProgress();
-
                     btnPlay.setVisibility(View.VISIBLE);
                     btnPause.setVisibility(View.INVISIBLE);
 
-                }catch (Exception ex){
+                } catch (Exception ex) {
                     Log.d(TAG, ex.getMessage().toString());
                 }
             }
         });
 
-        //연주
         btnPlay = findViewById(R.id.btnPlay);
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 if (mediaPlayer != null) {
                     mediaPlayer.start();
                     btnPlay.setVisibility(View.INVISIBLE);
@@ -199,39 +184,32 @@ public class Main3Activity extends AppCompatActivity {
             }
         });
 
-        //일시정지
         btnPause = findViewById(R.id.btnPause);
         btnPause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
                 if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                     mediaPlayer.pause();
-
                     btnPlay.setVisibility(View.VISIBLE);
                     btnPause.setVisibility(View.INVISIBLE);
                 }
             }
         });
 
-        //5초 뒤로
         btnPrevious = findViewById(R.id.btnPrevious);
         btnPrevious.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
                 if (mediaPlayer != null) {
                     mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() - 5000);
                 }
             }
         });
 
-        //5초 앞으로
         btnNextgo = findViewById(R.id.btnNextgo);
         btnNextgo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
                 if (mediaPlayer != null) {
                     mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 5000);
                 }
@@ -239,22 +217,32 @@ public class Main3Activity extends AppCompatActivity {
         });
     }
 
-    private void stopplayerTimer(){
-        if(playerTimer != null){
-            playerTimer.stop();
-            playerTimer.removeMessages(0);
+    private void releaseMediaPlayer() {
+        try {
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+        } catch (Exception ex) {
+            Log.e(TAG, ex.getMessage());
         }
     }
 
-    private void setSeekBarProgress(){
+    private void stopPlayerTimer() {
+        if (playerTimer != null) {
+            playerTimer.stop();
+            playerTimer = null;
+        }
+    }
 
-        stopplayerTimer();
+    private void setSeekBarProgress() {
+        stopPlayerTimer();
 
         playerTimer = new PlayerTimer();
         playerTimer.setCallback(new PlayerTimer.Callback() {
             @Override
             public void onTick(long timeMillis) {
-
                 int position = mediaPlayer.getCurrentPosition();
                 int duration = mediaPlayer.getDuration();
 
@@ -278,4 +266,3 @@ public class Main3Activity extends AppCompatActivity {
         playerTimer.start();
     }
 }
-

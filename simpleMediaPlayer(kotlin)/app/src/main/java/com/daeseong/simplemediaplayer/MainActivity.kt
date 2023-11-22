@@ -20,7 +20,6 @@ import com.daeseong.simplemediaplayer.Mp3Player.OnMediaPlayerListener
 import java.util.*
 import kotlin.collections.ArrayList
 
-
 class MainActivity : AppCompatActivity() {
 
     private val tag = MainActivity::class.java.simpleName

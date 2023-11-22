@@ -3,7 +3,6 @@ package com.daeseong.simplemediaplayer
 import android.media.MediaPlayer
 import android.util.Log
 
-
 class Mp3Player {
 
     companion object {
